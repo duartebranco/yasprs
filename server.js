@@ -6,7 +6,8 @@ const path = require('path');
 const os = require('os');
 
 const app = express();
-const CONFIG_FILE = path.join(os.homedir(), '.ps4-pkg-sender-config.json');
+const CONFIG_DIR = process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'yasprs') : path.join(os.homedir(), '.config', 'yasprs');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'profile.json');
 
 app.use(cors());
 app.use(express.json());
@@ -23,6 +24,7 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
