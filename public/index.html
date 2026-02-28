@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PS4 PKG Sender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #090b11;
+      --surface: #0d1117;
+      --card: #111827;
+      --border: #1e2d40;
+      --accent: #00d4ff;
+      --accent2: #0066ff;
+      --green: #00ff88;
+      --red: #ff4466;
+      --yellow: #ffcc00;
+      --text: #c9d8e8;
+      --muted: #4a6070;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-ui: 'Rajdhani', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 16px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,212,255,0.015) 2px,
+        rgba(0,212,255,0.015) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Grid background */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, #090b11 0%, #0d1117 50%, #090b11 100%);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,212,255,0.3), inset 0 0 8px rgba(0,212,255,0.05);
+      animation: pulse-border 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 12px rgba(0,212,255,0.3), inset 0 0 8px rgba(0,212,255,0.05); }
+      50% { box-shadow: 0 0 20px rgba(0,212,255,0.5), inset 0 0 12px rgba(0,212,255,0.1); }
+    }
+
+    .logo-text {
+      font-family: var(--font-ui);
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .logo-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 3px;
+    }
+
+    .status-bar {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 2s ease-in-out infinite;
+      display: inline-block;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ---- TABS ---- */
+    .tabs {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      gap: 0;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 14px 28px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      position: relative;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* ---- CONTENT ---- */
+    .content {
+      position: relative;
+      z-index: 10;
+      padding: 32px;
+      max-width: 1200px;
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.2s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ---- SECTION TITLE ---- */
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ---- CARD ---- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+
+    /* ---- FORM ---- */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,212,255,0.1);
+    }
+
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    .field-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid;
+      border-radius: 4px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: none;
+    }
+
+    .btn-primary {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: rgba(0,212,255,0.1);
+      box-shadow: 0 0 16px rgba(0,212,255,0.2);
+    }
+
+    .btn-save {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .btn-save:hover {
+      background: rgba(0,255,136,0.08);
+      box-shadow: 0 0 16px rgba(0,255,136,0.15);
+    }
+
+    .btn-send {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+
+    .btn-send:hover:not(:disabled) {
+      background: rgba(0,102,255,0.1);
+      box-shadow: 0 0 12px rgba(0,102,255,0.2);
+    }
+
+    .btn-send:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .btn-send.sending {
+      border-color: var(--yellow);
+      color: var(--yellow);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .btn-send.success {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .btn-send.error {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ---- PKG LIST ---- */
+    .pkg-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .search-box {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box:focus { border-color: var(--accent); }
+    .search-box::placeholder { color: var(--muted); }
+
+    .pkg-count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .pkg-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .pkg-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+    }
+
+    .pkg-row {
+      border-bottom: 1px solid rgba(30,45,64,0.5);
+      transition: background 0.1s;
+    }
+
+    .pkg-row:hover { background: rgba(0,212,255,0.03); }
+    .pkg-row:last-child { border-bottom: none; }
+
+    .pkg-row td {
+      padding: 10px 12px;
+      vertical-align: middle;
+    }
+
+    .pkg-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .pkg-path {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .pkg-size {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .pkg-action {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-title {
+      font-family: var(--font-ui);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .empty-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      z-index: 1000;
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      max-width: 360px;
+      animation: slideUp 0.2s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error { border-color: var(--red); color: var(--red); }
+    #toast.info { border-color: var(--accent); color: var(--accent); }
+
+    /* Network IPs display */
+    .ip-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .ip-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .row-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .row-2col { grid-template-columns: 1fr; }
+      header { flex-direction: column; gap: 12px; }
+      .content { padding: 20px 16px; }
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0,212,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">▶</div>
+      <div>
+        <div class="logo-text">PS4 PKG Sender</div>
+        <div class="logo-sub">Remote Package Installer // Web UI</div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <span class="status-dot"></span>
+      <span id="server-info">INITIALIZING...</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('settings')">⚙ Settings</button>
+    <button class="tab-btn" onclick="switchTab('packages')">📦 Packages</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-pane active" id="tab-settings">
+      <div class="section-title">// PS4 Configuration</div>
+
+      <div class="row-2col">
+        <div class="card">
+          <div class="field">
+            <label>PS4 IP Address</label>
+            <input type="text" id="ps4ip" placeholder="192.168.1.xxx" />
+            <div class="field-hint">Your PS4's local network IP (from Settings → Network)</div>
+          </div>
+          <div class="field">
+            <label>PS4 RPI Port</label>
+            <input type="text" id="ps4port" value="12800" placeholder="12800" />
+            <div class="field-hint">Remote Package Installer port (default: 12800)</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="field">
+            <label>PKG Base Path</label>
+            <input type="text" id="pkgBasePath" placeholder="/home/user/pkgs or C:\PKGs" />
+            <div class="field-hint">Local folder containing your .pkg files (subdirectories are scanned)</div>
+          </div>
+          <div class="field">
+            <label>This Server's Local IPs</label>
+            <div class="ip-chips" id="ip-list">
+              <div class="spinner"></div>
+            </div>
+            <div class="field-hint">Your PS4 will connect back to one of these to fetch the PKG</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-save" onclick="saveConfig()">
+        ✓ &nbsp;Save Configuration
+      </button>
+    </div>
+
+    <!-- PACKAGES TAB -->
+    <div class="tab-pane" id="tab-packages">
+      <div class="section-title">// Package Library</div>
+
+      <div class="card" style="padding: 16px 24px;">
+        <div class="pkg-toolbar">
+          <input type="text" class="search-box" id="pkg-search" placeholder="Search packages..." oninput="filterPkgs()" />
+          <button class="btn btn-primary" onclick="loadPkgs()" style="white-space:nowrap;">
+            ↺ &nbsp;Refresh
+          </button>
+          <span class="pkg-count" id="pkg-count">—</span>
+        </div>
+
+        <div id="pkg-list-container">
+          <div class="empty-state">
+            <span class="empty-icon">📂</span>
+            <div class="empty-title">No Packages Loaded</div>
+            <div class="empty-sub">Configure your PKG base path in Settings, then click Refresh</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+  let allPkgs = [];
+
+  // --- Tab switching ---
+  function switchTab(name) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if (name === 'packages') loadPkgs();
+  }
+
+  // --- Config ---
+  async function loadConfig() {
+    try {
+      const r = await fetch('/api/config');
+      const c = await r.json();
+      document.getElementById('ps4ip').value = c.ps4ip || '';
+      document.getElementById('pkgBasePath').value = c.pkgBasePath || '';
+      if (c.ps4port) document.getElementById('ps4port').value = c.ps4port;
+    } catch(e) {}
+  }
+
+  async function saveConfig() {
+    const ps4ip = document.getElementById('ps4ip').value.trim();
+    const pkgBasePath = document.getElementById('pkgBasePath').value.trim();
+    const ps4port = document.getElementById('ps4port').value.trim() || '12800';
+
+    try {
+      const r = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ps4ip, pkgBasePath, ps4port })
+      });
+      const d = await r.json();
+      if (d.success) showToast('Configuration saved!', 'success');
+      else showToast('Failed to save config', 'error');
+    } catch(e) {
+      showToast('Error: ' + e.message, 'error');
+    }
+  }
+
+  // --- Network IPs ---
+  async function loadNetworkIPs() {
+    try {
+      const r = await fetch('/api/network');
+      const d = await r.json();
+      const container = document.getElementById('ip-list');
+      if (d.ips.length === 0) {
+        container.innerHTML = '<span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">No network interfaces found</span>';
+      } else {
+        container.innerHTML = d.ips.map(ip => `<span class="ip-chip">${ip}</span>`).join('');
+      }
+      document.getElementById('server-info').textContent = `SERVER ON :3000 // ${d.ips[0] || 'localhost'}`;
+    } catch(e) {}
+  }
+
+  // --- PKGs ---
+  async function loadPkgs() {
+    const container = document.getElementById('pkg-list-container');
+    container.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
+    document.getElementById('pkg-count').textContent = '...';
+
+    try {
+      const r = await fetch('/api/pkgs');
+      const d = await r.json();
+
+      if (d.error) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">⚠</span>
+            <div class="empty-title">${d.error}</div>
+            <div class="empty-sub">Check your PKG base path in Settings</div>
+          </div>`;
+        document.getElementById('pkg-count').textContent = '0 files';
+        allPkgs = [];
+        return;
+      }
+
+      allPkgs = d.pkgs;
+      document.getElementById('pkg-count').textContent = `${allPkgs.length} file${allPkgs.length !== 1 ? 's' : ''}`;
+      renderPkgs(allPkgs);
+    } catch(e) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-title">Connection Error</div><div class="empty-sub">${e.message}</div></div>`;
+    }
+  }
+
+  function filterPkgs() {
+    const q = document.getElementById('pkg-search').value.toLowerCase();
+    const filtered = allPkgs.filter(p => p.name.toLowerCase().includes(q) || p.relativePath.toLowerCase().includes(q));
+    document.getElementById('pkg-count').textContent = `${filtered.length} / ${allPkgs.length} file${allPkgs.length !== 1 ? 's' : ''}`;
+    renderPkgs(filtered);
+  }
+
+  function renderPkgs(pkgs) {
+    const container = document.getElementById('pkg-list-container');
+
+    if (pkgs.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">📦</span>
+          <div class="empty-title">No PKG Files Found</div>
+          <div class="empty-sub">Make sure your base path contains .pkg files</div>
+        </div>`;
+      return;
+    }
+
+    const rows = pkgs.map((pkg, i) => `
+      <tr class="pkg-row">
+        <td>
+          <div class="pkg-name">${escapeHtml(pkg.name)}</div>
+          ${pkg.relativePath !== pkg.name ? `<div class="pkg-path">${escapeHtml(pkg.relativePath)}</div>` : ''}
+        </td>
+        <td class="pkg-size">${pkg.sizeFormatted}</td>
+        <td class="pkg-action">
+          <button class="btn btn-send" id="send-btn-${i}" onclick="sendPkg('${escapeHtml(pkg.path)}', ${i})">
+            ▶ Send to PS4
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <table class="pkg-table">
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th style="text-align:right">Size</th>
+            <th style="text-align:right">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  async function sendPkg(pkgPath, index) {
+    const btn = document.getElementById(`send-btn-${index}`);
+    btn.disabled = true;
+    btn.className = 'btn btn-send sending';
+    btn.textContent = '⟳ Sending...';
+
+    try {
+      const r = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pkgPath })
+      });
+      const d = await r.json();
+
+      if (d.success) {
+        btn.className = 'btn btn-send success';
+        btn.textContent = '✓ Queued!';
+        showToast(`Install queued on PS4!\n${d.pkgUrl}`, 'success');
+        setTimeout(() => {
+          btn.className = 'btn btn-send';
+          btn.textContent = '▶ Send to PS4';
+          btn.disabled = false;
+        }, 3000);
+      } else {
+        btn.className = 'btn btn-send error';
+        btn.textContent = '✕ Failed';
+        showToast('Error: ' + d.error, 'error');
+        setTimeout(() => {
+          btn.className = 'btn btn-send';
+          btn.textContent = '▶ Send to PS4';
+          btn.disabled = false;
+        }, 3000);
+      }
+    } catch(e) {
+      btn.className = 'btn btn-send error';
+      btn.textContent = '✕ Error';
+      showToast('Network error: ' + e.message, 'error');
+      setTimeout(() => {
+        btn.className = 'btn btn-send';
+        btn.textContent = '▶ Send to PS4';
+        btn.disabled = false;
+      }, 3000);
+    }
+  }
+
+  // --- Toast ---
+  let toastTimer;
+  function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // --- Init ---
+  loadConfig();
+  loadNetworkIPs();
+</script>
+</body>
+</html>
