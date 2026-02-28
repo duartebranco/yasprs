@@ -206,6 +206,6 @@ async function getLocalIP() {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(
-        `\n🎮 PS4 PKG Sender Web UI running at http://localhost:${PORT}\n`,
+        `\nPS4 PKG Sender Web UI running at http://localhost:${PORT}\n`,
     );
 });
