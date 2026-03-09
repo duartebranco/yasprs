@@ -1,4 +1,5 @@
 # YASPRS
+
 **Yet Another Simple PS4 Remote Sender**
 
 ![packages tab](docs/screenshot_20260228_224720.png)
@@ -16,12 +17,14 @@ I did this so that, as opposed to other apps, you can set this up as a service o
 ## Setup
 
 Clone the repo.
+
 ```bash
 git clone https://github.com/duartebranco/yasprs.git
 cd yasprs/
 ```
 
 Install the dependencies and start the server.
+
 ```bash
 npm install
 npm start

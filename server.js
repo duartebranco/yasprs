@@ -6,6 +6,7 @@ const path = require("path");
 const os = require("os");
 
 const app = express();
+
 const CONFIG_DIR = process.env.XDG_CONFIG_HOME
     ? path.join(process.env.XDG_CONFIG_HOME, "yasprs")
     : path.join(os.homedir(), ".config", "yasprs");
@@ -15,7 +16,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- Config persistence ---
 function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_FILE)) {
@@ -30,22 +30,76 @@ function saveConfig(config) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-// --- API Routes ---
+function formatSize(bytes) {
+    if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + " GB";
+    if (bytes >= 1e6) return (bytes / 1e6).toFixed(2) + " MB";
+    return (bytes / 1e3).toFixed(2) + " KB";
+}
 
-// Get config
+function getLocalIP() {
+    const interfaces = os.networkInterfaces();
+    for (const iface of Object.values(interfaces)) {
+        for (const alias of iface) {
+            if (alias.family === "IPv4" && !alias.internal) {
+                return alias.address;
+            }
+        }
+    }
+    return "localhost";
+}
+
+// recursively find all .pkg files under a directory
+function scanPkgs(dir, basePath) {
+    const pkgs = [];
+    try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                pkgs.push(...scanPkgs(fullPath, basePath));
+            } else if (
+                entry.isFile() &&
+                entry.name.toLowerCase().endsWith(".pkg")
+            ) {
+                const stats = fs.statSync(fullPath);
+                pkgs.push({
+                    name: entry.name,
+                    path: fullPath,
+                    relativePath: path.relative(basePath, fullPath),
+                    size: stats.size,
+                    sizeFormatted: formatSize(stats.size),
+                });
+            }
+        }
+    } catch (e) {}
+    return pkgs;
+}
+
+// recursively find a file by name under a directory
+function findFile(dir, name) {
+    try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                const found = findFile(full, name);
+                if (found) return found;
+            } else if (entry.name === name) {
+                return full;
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
 app.get("/api/config", (req, res) => {
     res.json(loadConfig());
 });
 
-// Save config
 app.post("/api/config", (req, res) => {
-    const config = loadConfig();
-    const updated = { ...config, ...req.body };
+    const updated = { ...loadConfig(), ...req.body };
     saveConfig(updated);
     res.json({ success: true, config: updated });
 });
 
-// List PKG files
 app.get("/api/pkgs", (req, res) => {
     const config = loadConfig();
     const basePath = config.pkgBasePath;
@@ -57,37 +111,9 @@ app.get("/api/pkgs", (req, res) => {
         });
     }
 
-    const pkgs = [];
-
-    function scan(dir) {
-        try {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    scan(fullPath);
-                } else if (
-                    entry.isFile() &&
-                    entry.name.toLowerCase().endsWith(".pkg")
-                ) {
-                    const stats = fs.statSync(fullPath);
-                    pkgs.push({
-                        name: entry.name,
-                        path: fullPath,
-                        relativePath: path.relative(basePath, fullPath),
-                        size: stats.size,
-                        sizeFormatted: formatSize(stats.size),
-                    });
-                }
-            }
-        } catch (e) {}
-    }
-
-    scan(basePath);
-    res.json({ pkgs });
+    res.json({ pkgs: scanPkgs(basePath, basePath) });
 });
 
-// Get local server IPs
 app.get("/api/network", (req, res) => {
     const interfaces = os.networkInterfaces();
     const ips = [];
@@ -101,7 +127,6 @@ app.get("/api/network", (req, res) => {
     res.json({ ips });
 });
 
-// Send PKG to PS4
 app.post("/api/send", async (req, res) => {
     const { pkgPath } = req.body;
     const config = loadConfig();
@@ -118,29 +143,18 @@ app.post("/api/send", async (req, res) => {
             .json({ success: false, error: "PKG file not found" });
     }
 
-    // Build the URL that PS4 RPI will use to fetch the file from this server
-    const networkRes = await getLocalIP();
-    const serverIP = networkRes || "localhost";
-    const serverPort = process.env.PORT || 3000;
-
-    // Register this file as a static served file
-    const fileName = path.basename(pkgPath);
-    const fileKey = encodeURIComponent(fileName);
-
-    // Serve the pkg file temporarily via a route
+    const serverIP = getLocalIP();
+    const serverPort = process.env.PORT || 3001;
+    const fileKey = encodeURIComponent(path.basename(pkgPath));
     const pkgUrl = `http://${serverIP}:${serverPort}/pkg-files/${fileKey}`;
-
-    // PS4 RPI endpoint
     const ps4Url = `http://${config.ps4ip}:12800/api/install`;
 
     try {
         const payload = JSON.stringify({ type: "direct", packages: [pkgUrl] });
-
         const response = await axios.post(ps4Url, payload, {
             timeout: 10000,
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         });
-
         res.json({ success: true, response: response.data, pkgUrl });
     } catch (err) {
         const msg = err.response
@@ -150,7 +164,6 @@ app.post("/api/send", async (req, res) => {
     }
 });
 
-// Serve pkg files by filename
 app.get("/pkg-files/:filename", (req, res) => {
     const config = loadConfig();
     const basePath = config.pkgBasePath;
@@ -158,23 +171,6 @@ app.get("/pkg-files/:filename", (req, res) => {
 
     if (!basePath) {
         return res.status(404).send("Base path not configured");
-    }
-
-    // Find the file in the base path
-    function findFile(dir, name) {
-        try {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const full = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    const found = findFile(full, name);
-                    if (found) return found;
-                } else if (entry.name === name) {
-                    return full;
-                }
-            }
-        } catch (e) {}
-        return null;
     }
 
     const filePath = findFile(basePath, filename);
@@ -185,25 +181,7 @@ app.get("/pkg-files/:filename", (req, res) => {
     res.sendFile(filePath);
 });
 
-function formatSize(bytes) {
-    if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + " GB";
-    if (bytes >= 1e6) return (bytes / 1e6).toFixed(2) + " MB";
-    return (bytes / 1e3).toFixed(2) + " KB";
-}
-
-async function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const iface of Object.values(interfaces)) {
-        for (const alias of iface) {
-            if (alias.family === "IPv4" && !alias.internal) {
-                return alias.address;
-            }
-        }
-    }
-    return "localhost";
-}
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(
         `\nPS4 PKG Sender Web UI running at http://localhost:${PORT}\n`,

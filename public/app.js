@@ -1,6 +1,5 @@
 let allPkgs = [];
 
-// Tabs
 document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
         document
@@ -16,8 +15,6 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
         if (btn.dataset.tab === "packages") loadPkgs();
     });
 });
-
-// ── Settings ──────────────────────────────────────────────────────────────────
 
 async function loadConfig() {
     const c = await api("/api/config");
@@ -42,8 +39,6 @@ async function saveConfig() {
 
 document.getElementById("btn-save").addEventListener("click", saveConfig);
 
-// ── Network IPs ───────────────────────────────────────────────────────────────
-
 async function loadNetworkIPs() {
     const d = await api("/api/network");
     if (!d) return;
@@ -54,11 +49,9 @@ async function loadNetworkIPs() {
         : '<span style="font-size:12px;color:var(--sub)">None found</span>';
 
     document.getElementById("server-info").textContent = d.ips[0]
-        ? `${d.ips[0]}:3000`
-        : "localhost:3000";
+        ? `${d.ips[0]}:3001`
+        : "localhost:3001";
 }
-
-// ── Packages ──────────────────────────────────────────────────────────────────
 
 async function loadPkgs() {
     const container = document.getElementById("pkg-list-container");
@@ -70,7 +63,7 @@ async function loadPkgs() {
     const d = await api("/api/pkgs");
 
     if (!d || d.error) {
-        container.innerHTML = empty(
+        container.innerHTML = emptyState(
             d?.error || "Connection error",
             "Check your PKG base path in Settings",
         );
@@ -79,7 +72,7 @@ async function loadPkgs() {
     }
 
     allPkgs = d.pkgs;
-    count.textContent = countLabel(allPkgs.length, allPkgs.length);
+    count.textContent = countLabel(allPkgs.length);
     renderPkgs(allPkgs);
 }
 
@@ -95,7 +88,7 @@ function filterPkgs() {
 
     document.getElementById("pkg-count").textContent = q
         ? `${filtered.length} / ${allPkgs.length}`
-        : countLabel(allPkgs.length, allPkgs.length);
+        : countLabel(allPkgs.length);
 
     renderPkgs(filtered);
 }
@@ -104,7 +97,7 @@ function renderPkgs(pkgs) {
     const container = document.getElementById("pkg-list-container");
 
     if (!pkgs.length) {
-        container.innerHTML = empty("No matches");
+        container.innerHTML = emptyState("No matches");
         return;
     }
 
@@ -170,8 +163,6 @@ async function sendPkg(pkgPath, i) {
 document.getElementById("btn-refresh").addEventListener("click", loadPkgs);
 document.getElementById("pkg-search").addEventListener("input", filterPkgs);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 async function api(url, { method = "GET", body } = {}) {
     try {
         const r = await fetch(url, {
@@ -186,20 +177,23 @@ async function api(url, { method = "GET", body } = {}) {
     }
 }
 
-let _tt;
+let toastTimer;
 function toast(msg, type = "info") {
     const el = document.getElementById("toast");
     el.textContent = msg;
     el.className = type;
     el.style.display = "block";
-    clearTimeout(_tt);
-    _tt = setTimeout(() => (el.style.display = "none"), 4200);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (el.style.display = "none"), 4200);
 }
 
-const empty = (title, hint = "") =>
-    `<div class="empty"><div class="empty-title">${title}</div>${hint ? `<div class="empty-hint">${hint}</div>` : ""}</div>`;
+function emptyState(title, hint = "") {
+    return `<div class="empty"><div class="empty-title">${title}</div>${hint ? `<div class="empty-hint">${hint}</div>` : ""}</div>`;
+}
 
-const countLabel = (n) => `${n} file${n !== 1 ? "s" : ""}`;
+function countLabel(n) {
+    return `${n} file${n !== 1 ? "s" : ""}`;
+}
 
 function esc(s) {
     return String(s)
@@ -208,8 +202,6 @@ function esc(s) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
 }
-
-// ── Init ──────────────────────────────────────────────────────────────────────
 
 loadConfig();
 loadNetworkIPs();
