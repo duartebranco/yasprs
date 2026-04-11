@@ -20,6 +20,8 @@ Built for simplicity: run it on any machine (including a headless server), then 
 - PS4 running HEN / GoldHEN with **Remote Package Installer** open
 - PS4 and this machine on the same local network
 
+> **Security note:** There is no authentication on the web UI or API endpoints. Run this on a trusted local network only. If you run it on a shared or untrusted network, add your own access controls.
+
 ## Install
 
 ```bash
@@ -42,8 +44,8 @@ Then open **http://localhost:3001** in your browser.
 
 Config is stored at:
 
-- `$XDG_CONFIG_HOME/yasprs/profile.json`  
-  or fallback: `~/.config/yasprs/profile.json`
+- `$XDG_CONFIG_HOME/yasprs/profile.json` (if `XDG_CONFIG_HOME` is set)
+- `~/.config/yasprs/profile.json` (otherwise)
 
 ## Usage
 
@@ -53,7 +55,7 @@ Config is stored at:
 
 ## Notes
 
-This tool is intended for **local network use only**. There is no authentication on the web UI or API endpoints. If you run it on a shared or untrusted network, add your own access controls.
+This tool is intended for **local network use only**. See the security note in Requirements above.
 
 ## Troubleshooting
 
