@@ -1,0 +1,32 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --white: #ffffff;
+    --off: #f4f7fb;
+    --line: #d1dce8;
+    --line2: #e8eff6;
+    --blue: #2f6de0;
+    --blue-lt: #e8f0fc;
+    --blue-md: #c4d7f8;
+    --text: #0f1923;
+    --sub: #5a6e82;
+    --mono: "DM Mono", monospace;
+    --sans: "DM Sans", sans-serif;
+}
+
+html,
+body {
+    min-height: 100vh;
+    background: var(--off);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
