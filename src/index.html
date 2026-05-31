@@ -9,7 +9,9 @@
             href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="css/base.css" />
+        <link rel="stylesheet" href="css/layout.css" />
+        <link rel="stylesheet" href="css/components.css" />
     </head>
     <body>
         <div class="shell">
@@ -36,7 +38,6 @@
                     </button>
                 </nav>
 
-                <!-- SETTINGS -->
                 <div class="tab-pane active" id="tab-settings">
                     <div class="sec-label">PS4 Target</div>
                     <div class="card">
@@ -102,7 +103,6 @@
                     </button>
                 </div>
 
-                <!-- PACKAGES -->
                 <div class="tab-pane" id="tab-packages">
                     <div class="pkg-toolbar">
                         <input
@@ -132,6 +132,6 @@
 
         <div id="toast"></div>
 
-        <script src="app.js"></script>
+        <script src="js/app.js" type="module"></script>
     </body>
 </html>
