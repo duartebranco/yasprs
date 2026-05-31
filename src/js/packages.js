@@ -21,7 +21,7 @@ export async function loadPkgs() {
         return;
     }
 
-    allPkgs = d.pkgs;
+    allPkgs = d.pkgs || [];
     count.textContent = countLabel(allPkgs.length);
     renderPkgs(allPkgs);
 }
