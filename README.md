@@ -57,6 +57,8 @@ Config is stored at:
 
 This tool is intended for **local network use only**. See the security note in Requirements above.
 
+**Platform support:** Tested on Linux. It should run on macOS and Windows with Node.js 16+, but those platforms are untested. If the default config location is not ideal, set `XDG_CONFIG_HOME` to a writable path.
+
 ## Troubleshooting
 
 - **No packages found**
