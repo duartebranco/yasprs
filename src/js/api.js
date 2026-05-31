@@ -7,7 +7,7 @@ export async function api(url, { method = "GET", body } = {}) {
             headers: body ? { "Content-Type": "application/json" } : {},
             body: body ? JSON.stringify(body) : undefined,
         });
-        return r.json();
+        return await r.json();
     } catch (e) {
         toast("Network error: " + e.message, "fail");
         return null;
